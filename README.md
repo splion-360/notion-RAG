@@ -170,24 +170,3 @@ POST /auth/store-token
 └── README.md          # This file
 ```
 
-## Development
-
-Run tests:
-```bash
-pytest
-```
-
-Format code:
-```bash
-black .
-ruff check .
-```
-
-Type checking:
-```bash
-mypy src/
-```
-
-## License
-
-MIT
