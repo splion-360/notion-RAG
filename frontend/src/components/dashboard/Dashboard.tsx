@@ -17,6 +17,14 @@ import {
   IconButton,
   Divider,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Avatar,
 } from '@mui/material';
 import {
   LogoutOutlined as LogoutIcon,
@@ -34,7 +42,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { createClient } from '../../lib/supabase';
 
 const DRAWER_WIDTH = 240;
-const backendUrl = new URL(import.meta.env.VITE_BACKEND_URL);
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const NOTION_APP_SLUG = 'notion';
 
 interface ConnectPortalCloseStatus {
   successful: boolean;
@@ -55,6 +64,14 @@ interface UserProfile {
   name: string;
   created_at: string;
   updated_at: string;
+  account_id?: string | null;
+  app_id?: string | null;
+}
+
+interface UserIntegration {
+  appName: string;
+  logo: string;
+  createdAt: string;
 }
 
 export default function Dashboard() {
@@ -88,7 +105,14 @@ export default function Dashboard() {
         }
 
         const data = await response.json();
-        return data.token;
+        if (!data?.token) {
+          throw new Error('Connect token missing from backend response');
+        }
+
+        const expiresAtValue = data.expires_at;
+        const connectLinkUrl = data.connect_link_url;
+
+        return { token: data.token, expiresAt: expiresAtValue, connectLinkUrl };
       },
     });
   }, [userId]);
@@ -96,6 +120,20 @@ export default function Dashboard() {
   const handlePortalClose = useCallback((_: ConnectPortalCloseStatus) => {
     setIsConnectPortalOpen(false);
   }, []);
+
+  const userIntegrations = useMemo<UserIntegration[]>(() => {
+    if (!userProfile?.account_id) {
+      return [];
+    }
+
+    return [
+      {
+        appName: 'Notion',
+        logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg',
+        createdAt: userProfile.updated_at || userProfile.created_at,
+      },
+    ];
+  }, [userProfile]);
 
   const handleConnectSuccess = useCallback(() => {
     toast.success('Notion connected successfully!');
@@ -242,6 +280,45 @@ export default function Dashboard() {
                   </Button>
                 </CardActions>
               </Card>
+              <Box mt={4}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Connected Apps
+                </Typography>
+                {userIntegrations.length > 0 ? (
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Logo</TableCell>
+                          <TableCell>App</TableCell>
+                          <TableCell>Connected</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {userIntegrations.map((integration) => (
+                          <TableRow key={`${integration.appName}-${integration.createdAt}`}>
+                            <TableCell>
+                              <Avatar
+                                src={integration.logo}
+                                alt={`${integration.appName} logo`}
+                                sx={{ width: 32, height: 32 }}
+                              >
+                                {integration.appName.charAt(0)}
+                              </Avatar>
+                            </TableCell>
+                            <TableCell>{integration.appName}</TableCell>
+                            <TableCell>{formatDate(integration.createdAt)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No integrations connected yet.
+                  </Typography>
+                )}
+              </Box>
             </Box>
           )}
 
@@ -297,7 +374,7 @@ export default function Dashboard() {
       </Box>
       {pipedreamClient && (
         <PipedreamConnectPortal
-          app="notion"
+          app={NOTION_APP_SLUG}
           open={isConnectPortalOpen}
           onClose={handlePortalClose}
           onSuccess={handleConnectSuccess}
