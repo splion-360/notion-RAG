@@ -12,12 +12,16 @@ class IntegrationOperations:
         user_id: str,
         app_name: str,
         account_id: str,
+        app_id: str | None = None,
     ) -> dict[str, Any] | None:
         data = {
             "user_id": user_id,
             "app_name": app_name,
             "account_id": account_id,
         }
+
+        if app_id:
+            data["app_id"] = app_id
 
         result = (
             supabase.table("integrations")
@@ -40,12 +44,12 @@ class IntegrationOperations:
         return result.data if result.data else []
 
     @staticmethod
-    def get_integration(user_id: str, app_name: str) -> dict[str, Any] | None:
+    def get_integration(user_id: str, account_id: str) -> dict[str, Any] | None:
         result = (
             supabase.table("integrations")
             .select("*")
             .eq("user_id", user_id)
-            .eq("app_name", app_name)
+            .eq("account_id", account_id)
             .execute()
         )
         return result.data[0] if result.data else None
