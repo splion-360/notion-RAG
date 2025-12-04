@@ -43,7 +43,6 @@ import { createClient } from '../../lib/supabase';
 
 const DRAWER_WIDTH = 240;
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
-const NOTION_APP_SLUG = 'notion';
 
 interface ConnectPortalCloseStatus {
   successful: boolean;
@@ -81,6 +80,7 @@ export default function Dashboard() {
   const [selectedTab, setSelectedTab] = useState('integrations');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isConnectPortalOpen, setIsConnectPortalOpen] = useState(false);
+  const [userIntegrations, setUserIntegrations] = useState<UserIntegration[]>([]);
   const supabase = createClient();
   const userId = user?.id;
 
@@ -121,23 +121,75 @@ export default function Dashboard() {
     setIsConnectPortalOpen(false);
   }, []);
 
-  const userIntegrations = useMemo<UserIntegration[]>(() => {
-    if (!userProfile?.account_id) {
-      return [];
+  const getAppLogo = (appName: string): string => {
+    const logos: Record<string, string> = {
+      notion: 'https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg',
+    };
+    return logos[appName.toLowerCase()] || '';
+  };
+
+  const fetchIntegrations = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      const response = await fetch(
+        `${backendUrl}/api/v1/auth/integrations?user_id=${userId}`
+      );
+
+      if (response.ok) {
+        const integrations = await response.json();
+        setUserIntegrations(
+          integrations.map((int: any) => ({
+            appName: int.app_name,
+            logo: getAppLogo(int.app_name),
+            createdAt: int.created_at,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to fetch integrations:', error);
+    }
+  }, [userId]);
+
+  const handleConnectSuccess = useCallback(async (payload: { id?: string }) => {
+    if (!userId || !payload.id) {
+      toast.error('Connection successful but account ID missing');
+      return;
     }
 
-    return [
-      {
-        appName: 'Notion',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg',
-        createdAt: userProfile.updated_at || userProfile.created_at,
-      },
-    ];
-  }, [userProfile]);
+    try {
+      const response = await fetch(`${backendUrl}/api/v1/auth/integrations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          app_name: 'notion',
+          account_id: payload.id
+        })
+      });
 
-  const handleConnectSuccess = useCallback(() => {
-    toast.success('Notion connected successfully!');
-  }, []);
+      if (!response.ok) {
+        throw new Error('Failed to store integration');
+      }
+
+      toast.success('Notion connected successfully!');
+
+      await fetchIntegrations();
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (!error && data) {
+        setUserProfile(data);
+      }
+    } catch (error) {
+      toast.error('Connected but failed to save. Please try again.');
+      console.error(error);
+    }
+  }, [userId, supabase, fetchIntegrations]);
 
   const handleConnectError = useCallback((error: unknown) => {
     toast.error('Failed to connect Notion');
@@ -163,6 +215,10 @@ export default function Dashboard() {
 
     fetchUserProfile();
   }, [user]);
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
 
   const handleSignOut = async () => {
     try {
@@ -374,7 +430,7 @@ export default function Dashboard() {
       </Box>
       {pipedreamClient && (
         <PipedreamConnectPortal
-          app={NOTION_APP_SLUG}
+          app="notion"
           open={isConnectPortalOpen}
           onClose={handlePortalClose}
           onSuccess={handleConnectSuccess}

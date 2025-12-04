@@ -1,6 +1,7 @@
 from typing import Any
 
 from pipedream import AsyncPipedream, CreateTokenResponse
+from pipedream.types import Account
 
 from app.config import (
     ENVIRONMENT,
@@ -66,14 +67,23 @@ class PipedreamService:
             logger.error(f"Failed to get user accounts: {e}")
             raise PipedreamClientError("Failed to get user accounts") from e
 
-    async def get_account_details(self, external_user_id: str, account_id: str) -> dict[str, Any]:
+    async def get_account_details(self, external_user_id: str, account_id: str) -> Account:
         try:
             account = await self._client.accounts.retrieve(account_id=account_id)
-            logger.info(f"Fetched account details for {account_id}")
+            logger.info(f"Fetched {account_id} details for {external_user_id}")
             return account
         except Exception as e:
             logger.error(f"Failed to get account details: {e}")
             raise PipedreamClientError("Failed to get account details") from e
+
+    async def delete_account(self, external_user_id: str, account_id: str) -> bool:
+        try:
+            await self._client.accounts.delete(account_id=account_id)
+            logger.info(f"Deleted {account_id} for {external_user_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete account: {e}")
+            raise PipedreamClientError("Failed to delete account") from e
 
     async def proxy_notion_request(
         self,

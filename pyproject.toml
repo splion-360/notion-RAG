@@ -52,6 +52,11 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["supabase*", "frontend*", "tests*"]
+
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true

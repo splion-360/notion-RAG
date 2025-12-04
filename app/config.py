@@ -25,6 +25,13 @@ PIPEDREAM_CLIENT_SECRET = os.environ.get("PIPEDREAM_CLIENT_SECRET")
 PIPEDREAM_PROJECT_ID = os.environ.get("PIPEDREAM_PROJECT_ID")
 PIPEDREAM_OAUTH_APP_ID = os.environ.get("PIPEDREAM_OAUTH_APP_ID")
 
+if ENVIRONMENT == "development":
+    SUPABASE_URL = os.environ.get("SUPABASE_URL_DEV")
+    SUPABASE_KEY = os.environ.get("SUPABASE_SECRET_KEY_DEV")
+else:
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    SUPABASE_KEY = os.environ.get("SUPABASE_SECRET_KEY")
+
 
 LOG_COLORS = {
     "RED": "\033[31m",
