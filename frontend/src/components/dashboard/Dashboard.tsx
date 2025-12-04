@@ -22,10 +22,13 @@ import {
   LogoutOutlined as LogoutIcon,
   IntegrationInstructions as IntegrationsIcon,
   Person as PersonIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { createClient } from '../../lib/supabase';
 
 const DRAWER_WIDTH = 240;
@@ -40,6 +43,7 @@ interface UserProfile {
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
+  const { mode, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('integrations');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -98,6 +102,9 @@ export default function Dashboard() {
           <Typography variant="body2" sx={{ mr: 2 }}>
             {user?.user_metadata?.name || user?.email}
           </Typography>
+          <IconButton onClick={toggleTheme} color="inherit" title="Toggle theme">
+            {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+          </IconButton>
           <IconButton onClick={handleSignOut} color="inherit" title="Sign out">
             <LogoutIcon />
           </IconButton>
