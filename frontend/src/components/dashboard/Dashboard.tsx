@@ -71,6 +71,7 @@ interface UserIntegration {
   appName: string;
   logo: string;
   createdAt: string;
+  accountId: string;
 }
 
 export default function Dashboard() {
@@ -81,6 +82,7 @@ export default function Dashboard() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isConnectPortalOpen, setIsConnectPortalOpen] = useState(false);
   const [userIntegrations, setUserIntegrations] = useState<UserIntegration[]>([]);
+  const [isSavingIntegration, setIsSavingIntegration] = useState(false);
   const supabase = createClient();
   const userId = user?.id;
 
@@ -143,6 +145,7 @@ export default function Dashboard() {
             appName: int.app_name,
             logo: getAppLogo(int.app_name),
             createdAt: int.created_at,
+            accountId: int.account_id,
           }))
         );
       }
@@ -153,10 +156,12 @@ export default function Dashboard() {
 
   const handleConnectSuccess = useCallback(async (payload: { id?: string }) => {
     if (!userId || !payload.id) {
-      toast.error('Connection successful but account ID missing');
+      toast.error('Connection finished but account info is missing');
+      setIsConnectPortalOpen(false);
       return;
     }
 
+    setIsSavingIntegration(true);
     try {
       const response = await fetch(`${backendUrl}/api/v1/auth/integrations`, {
         method: 'POST',
@@ -164,36 +169,31 @@ export default function Dashboard() {
         body: JSON.stringify({
           user_id: userId,
           app_name: 'notion',
-          account_id: payload.id
-        })
+          account_id: payload.id,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to store integration');
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.detail || 'Failed to store integration');
       }
 
       toast.success('Notion connected successfully!');
-
       await fetchIntegrations();
-
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (!error && data) {
-        setUserProfile(data);
-      }
+      setIsConnectPortalOpen(false);
     } catch (error) {
-      toast.error('Connected but failed to save. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to store integration');
       console.error(error);
+      setIsConnectPortalOpen(false);
+    } finally {
+      setIsSavingIntegration(false);
     }
-  }, [userId, supabase, fetchIntegrations]);
+  }, [userId, fetchIntegrations]);
 
   const handleConnectError = useCallback((error: unknown) => {
     toast.error('Failed to connect Notion');
     console.error(error);
+    setIsConnectPortalOpen(false);
   }, []);
 
   useEffect(() => {
@@ -331,6 +331,7 @@ export default function Dashboard() {
                     color="primary"
                     fullWidth
                     onClick={handleConnectNotion}
+                    disabled={isSavingIntegration}
                   >
                     Connect Notion
                   </Button>
@@ -347,6 +348,7 @@ export default function Dashboard() {
                         <TableRow>
                           <TableCell>Logo</TableCell>
                           <TableCell>App</TableCell>
+                          <TableCell>Account ID</TableCell>
                           <TableCell>Connected</TableCell>
                         </TableRow>
                       </TableHead>
@@ -363,6 +365,7 @@ export default function Dashboard() {
                               </Avatar>
                             </TableCell>
                             <TableCell>{integration.appName}</TableCell>
+                            <TableCell>{integration.accountId}</TableCell>
                             <TableCell>{formatDate(integration.createdAt)}</TableCell>
                           </TableRow>
                         ))}

@@ -54,12 +54,11 @@ class IntegrationResponse(BaseModel):
 
 
 @router.post(
-    "/integrations", response_model=IntegrationResponse | None, status_code=status.HTTP_201_CREATED
+    "/integrations", response_model=IntegrationResponse, status_code=status.HTTP_201_CREATED
 )
 async def store_integration(request: StoreIntegrationRequest):
 
     try:
-        raise
         integration = IntegrationOperations.upsert_integration(
             user_id=request.user_id,
             app_name=request.app_name,
@@ -71,7 +70,10 @@ async def store_integration(request: StoreIntegrationRequest):
                 f"No data returned for user {request.user_id} and account {request.account_id}"
             )
 
-        logger.info(f"Stored integration for user {request.user_id}, app {request.app_name}")
+        logger.info(
+            f"Stored integration for user {request.user_id}, app: {request.app_name.upper()}",
+            "CYAN",
+        )
         return integration
 
     except Exception as e:
@@ -82,7 +84,7 @@ async def store_integration(request: StoreIntegrationRequest):
         )
 
         if rolled_back:
-            logger.info(f"Rolled back Pipedream account {request.account_id}")
+            logger.info(f"Rolled back Pipedream account {request.account_id}", "CYAN")
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
