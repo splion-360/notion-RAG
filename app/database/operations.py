@@ -24,24 +24,25 @@ class IntegrationOperations:
             data["app_id"] = app_id
 
         result = (
-            supabase.table("integrations")
-            .upsert(data, on_conflict="user_id,account_id")
-            .execute()
+            supabase.table("integrations").upsert(data, on_conflict="user_id,account_id").execute()
         )
 
         return result.data[0] if result.data else None
 
     @staticmethod
-    def list_integrations(user_id: str) -> list[dict[str, Any]]:
-        result = (
+    def list_integrations(user_id: str, app_name: str = None) -> list[dict[str, Any]]:
+        query = (
             supabase.table("integrations")
-            .select("*")
+            .select("id, user_id, app_name, account_id, created_at, updated_at")
             .eq("user_id", user_id)
-            .order("created_at", desc=True)
-            .execute()
         )
 
-        return result.data if result.data else []
+        if app_name is not None:
+            query = query.eq("app_name", app_name)
+
+        result = query.execute()
+
+        return result.data
 
     @staticmethod
     def get_integration(user_id: str, account_id: str) -> dict[str, Any] | None:

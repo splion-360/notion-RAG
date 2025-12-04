@@ -85,7 +85,7 @@ class PipedreamService:
             logger.error(f"Failed to delete account: {e}")
             raise PipedreamClientError("Failed to delete account") from e
 
-    async def proxy_notion_request(
+    async def proxy_request(
         self,
         external_user_id: str,
         account_id: str,
@@ -103,10 +103,10 @@ class PipedreamService:
                 body=body or {},
                 headers=headers or {},
             )
-            logger.info(f"Proxied {method} request to {url}")
+            logger.info(f"Successful {method} request to {url}", "GREEN")
             return result
         except Exception as e:
-            logger.error(f"Failed to proxy Notion request: {e}")
+            logger.error(f"Proxy request failed: {e}")
             raise PipedreamClientError("Proxy request failed") from e
 
 

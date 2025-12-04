@@ -83,6 +83,7 @@ export default function Dashboard() {
   const [isConnectPortalOpen, setIsConnectPortalOpen] = useState(false);
   const [userIntegrations, setUserIntegrations] = useState<UserIntegration[]>([]);
   const [isSavingIntegration, setIsSavingIntegration] = useState(false);
+  const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
   const supabase = createClient();
   const userId = user?.id;
 
@@ -240,6 +241,43 @@ export default function Dashboard() {
     setIsConnectPortalOpen(true);
   };
 
+  const handleSync = useCallback(async (accountId: string) => {
+    if (!userId) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    setSyncingAccounts(prev => new Set(prev).add(accountId));
+    try {
+      const response = await fetch(`${backendUrl}/api/v1/notion/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          account_id: accountId,
+          recency_months: 6,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.detail || 'Failed to sync Notion pages');
+      }
+
+      const result = await response.json();
+      toast.success(result.message || 'Sync completed successfully');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sync Notion pages');
+      console.error(error);
+    } finally {
+      setSyncingAccounts(prev => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  }, [userId]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -350,6 +388,7 @@ export default function Dashboard() {
                           <TableCell>App</TableCell>
                           <TableCell>Account ID</TableCell>
                           <TableCell>Connected</TableCell>
+                          <TableCell>Actions</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -367,6 +406,16 @@ export default function Dashboard() {
                             <TableCell>{integration.appName}</TableCell>
                             <TableCell>{integration.accountId}</TableCell>
                             <TableCell>{formatDate(integration.createdAt)}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleSync(integration.accountId)}
+                                disabled={syncingAccounts.has(integration.accountId)}
+                              >
+                                {syncingAccounts.has(integration.accountId) ? 'Syncing...' : 'Sync'}
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
