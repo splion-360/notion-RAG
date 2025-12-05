@@ -32,6 +32,7 @@ import {
   Person as PersonIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
+  Chat as ChatIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -40,6 +41,7 @@ import { createFrontendClient } from '@pipedream/sdk/browser';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { createClient } from '../../lib/supabase';
+import Chat from '../chat/Chat';
 
 const DRAWER_WIDTH = 240;
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -333,6 +335,17 @@ export default function Dashboard() {
               </ListItem>
               <ListItem disablePadding>
                 <ListItemButton
+                  selected={selectedTab === 'chat'}
+                  onClick={() => setSelectedTab('chat')}
+                >
+                  <ListItemIcon>
+                    <ChatIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Chat" />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton
                   selected={selectedTab === 'profile'}
                   onClick={() => setSelectedTab('profile')}
                 >
@@ -348,6 +361,10 @@ export default function Dashboard() {
 
         <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
           <Toolbar />
+
+          {selectedTab === 'chat' && userId && (
+            <Chat userId={userId} />
+          )}
 
           {selectedTab === 'integrations' && (
             <Box>

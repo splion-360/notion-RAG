@@ -148,7 +148,7 @@ class PageChunkOperations:
             .order("chunk_index")
             .execute()
         )
-        return result.data if result.data else []
+        return result.data
 
     @staticmethod
     def search_similar_chunks(
@@ -166,4 +166,83 @@ class PageChunkOperations:
             },
         ).execute()
 
+        return result.data
+
+
+class ConversationOperations:
+    @staticmethod
+    def create_conversation(user_id: str, title: str | None = None) -> dict[str, Any] | None:
+        data = {"user_id": user_id}
+        if title:
+            data["title"] = title
+
+        result = supabase.table("conversations").insert(data).execute()
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def get_conversation(conversation_id: str) -> dict[str, Any] | None:
+        result = supabase.table("conversations").select("*").eq("id", conversation_id).execute()
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def list_conversations(user_id: str) -> list[dict[str, Any]]:
+        result = (
+            supabase.table("conversations")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("updated_at", desc=True)
+            .execute()
+        )
+        return result.data if result.data else []
+
+    @staticmethod
+    def update_conversation_title(conversation_id: str, title: str) -> bool:
+        try:
+            supabase.table("conversations").update({"title": title}).eq(
+                "id", conversation_id
+            ).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update conversation title: {e}")
+            return False
+
+    @staticmethod
+    def delete_conversation(conversation_id: str) -> bool:
+        try:
+            supabase.table("conversations").delete().eq("id", conversation_id).execute()
+            logger.info(f"Deleted conversation {conversation_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete conversation {conversation_id}: {e}")
+            return False
+
+
+class MessageOperations:
+    @staticmethod
+    def create_message(
+        conversation_id: str,
+        role: str,
+        content: str,
+        chunks: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any] | None:
+        data = {
+            "conversation_id": conversation_id,
+            "role": role,
+            "content": content,
+        }
+        if chunks:
+            data["chunks"] = chunks
+
+        result = supabase.table("messages").insert(data).execute()
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def get_conversation_messages(conversation_id: str) -> list[dict[str, Any]]:
+        result = (
+            supabase.table("messages")
+            .select("*")
+            .eq("conversation_id", conversation_id)
+            .order("created_at")
+            .execute()
+        )
         return result.data if result.data else []

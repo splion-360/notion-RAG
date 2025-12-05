@@ -18,10 +18,10 @@ numpy==1.26.4
 tiktoken==0.6.0
 
 # AI Stack
-langgraph>=0.0.40
+langgraph
 langchain-core>=0.1.0,<0.3.0
 langchain>=0.1.0
-langchain-openai>=0.0.2
+langchain-ollama>=0.1.0
 
 # API framework
 fastapi==0.110.2
