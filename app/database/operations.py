@@ -64,3 +64,47 @@ class IntegrationOperations:
         except Exception as e:
             logger.error(f"Failed to delete integration {integration_id}: {e}")
             return False
+
+
+class NotionPageOperations:
+    @staticmethod
+    def upsert_notion_page(
+        integration_id: str,
+        notion_page_id: str,
+        title: str | None = None,
+        url: str | None = None,
+        content: str | None = None,
+        media_metadata: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any] | None:
+        data = {
+            "integration_id": integration_id,
+            "notion_page_id": notion_page_id,
+            "title": title,
+            "url": url,
+            "content": content,
+            "media_metadata": media_metadata,
+        }
+
+        result = (
+            supabase.table("notion_pages")
+            .upsert(data, on_conflict="integration_id,notion_page_id")
+            .execute()
+        )
+
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def get_notion_page(page_id: str) -> dict[str, Any] | None:
+        result = supabase.table("notion_pages").select("*").eq("id", page_id).execute()
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def list_notion_pages(integration_id: str) -> list[dict[str, Any]]:
+        result = (
+            supabase.table("notion_pages")
+            .select("*")
+            .eq("integration_id", integration_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return result.data if result.data else []

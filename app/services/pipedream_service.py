@@ -96,13 +96,16 @@ class PipedreamService:
     ) -> dict[str, Any]:
         try:
             proxy_method = getattr(self._client.proxy, method.lower())
-            result = await proxy_method(
-                external_user_id=external_user_id,
-                account_id=account_id,
-                url=url,
-                body=body or {},
-                headers=headers or {},
-            )
+            kwargs = {
+                "external_user_id": external_user_id,
+                "account_id": account_id,
+                "url": url,
+                "headers": headers or {},
+            }
+            if method.upper() != "GET":
+                kwargs["body"] = body or {}
+
+            result = await proxy_method(**kwargs)
             logger.info(f"Successful {method} request to {url}", "GREEN")
             return result
         except Exception as e:

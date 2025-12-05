@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
 from app.config import setup_logger
-from app.database.operations import IntegrationOperations
+from app.database.operations import IntegrationOperations, NotionPageOperations
 from app.services.notion_service import NotionService
 
 router = APIRouter()
@@ -66,11 +66,53 @@ async def sync_pages(payload: NotionSyncRequest):
             recency=payload.recency_months,
         )
 
-        logger.info(f"Sync completed: {len(pages)} pages fetched", "WHITE")
+        logger.info(f"Fetched {len(pages)} page metadata", "WHITE")
+
+        integration_id = integration["id"]
+        stored_count = 0
+
+        for page in pages:
+            try:
+                page_id = page.get("id")
+                title = (
+                    page.get("properties", {})
+                    .get("title", {})
+                    .get("title", [{}])[0]
+                    .get("plain_text", "Untitled")
+                )
+                url = page.get("url")
+
+                logger.info(f"Fetching content for page: {title}", "WHITE")
+
+                blocks = await NotionService.fetch_page_blocks(
+                    external_user_id=payload.user_id,
+                    account_id=payload.account_id,
+                    page_id=page_id,
+                )
+
+                content, media_metadata = NotionService.extract_text_from_blocks(blocks)
+
+                NotionPageOperations.upsert_notion_page(
+                    integration_id=integration_id,
+                    notion_page_id=page_id,
+                    title=title,
+                    url=url,
+                    content=content,
+                    media_metadata=media_metadata if media_metadata else None,
+                )
+
+                stored_count += 1
+                logger.info(f"Stored page: {title}", "GREEN")
+
+            except Exception as page_error:
+                logger.error(f"Failed to process page {page.get('id')}: {page_error}")
+                continue
+
+        logger.info(f"Sync completed: {stored_count}/{len(pages)} pages stored", "GREEN")
 
         return NotionSyncResponse(
-            pages_fetched=len(pages),
-            message=f"Successfully fetched {len(pages)} pages",
+            pages_fetched=stored_count,
+            message=f"Successfully stored {stored_count} of {len(pages)} pages",
         )
 
     except Exception as e:
