@@ -40,6 +40,27 @@ class NotionPageResponse(BaseModel):
     updated_at: str
 
 
+class SearchRequest(BaseModel):
+    query: str
+    user_id: str
+    top_k: int = 5
+
+
+class SearchResultChunk(BaseModel):
+    chunk_content: str
+    page_id: str
+    page_title: str
+    page_url: str
+    similarity_score: float
+    chunk_index: int
+
+
+class SearchResponse(BaseModel):
+    results: list[SearchResultChunk]
+    query: str
+    total_results: int
+
+
 @router.get("/accounts", response_model=list[NotionAccount])
 async def list_notion_accounts(user_id: str, app_name: str = None):
     try:
@@ -209,4 +230,46 @@ async def get_page(page_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve page",
+        )
+
+
+@router.post("/search", response_model=SearchResponse)
+async def search_pages(request: SearchRequest):
+    try:
+        logger.info(f"Search query: {request.query}", "CYAN")
+
+        query_embedding = embedding_service.generate_embedding(request.query)
+
+        logger.info("Performing vector similarity search")
+        results = PageChunkOperations.search_similar_chunks(
+            query_embedding=query_embedding,
+            user_id=request.user_id,
+            limit=request.top_k,
+        )
+
+        search_results = [
+            SearchResultChunk(
+                chunk_content=r["chunk_content"],
+                page_id=r["page_id"],
+                page_title=r["page_title"] or "Untitled",
+                page_url=r["page_url"] or "",
+                similarity_score=r["similarity_score"],
+                chunk_index=r["chunk_index"],
+            )
+            for r in results
+        ]
+
+        logger.info(f"Found {len(search_results)} results", "GREEN")
+
+        return SearchResponse(
+            results=search_results,
+            query=request.query,
+            total_results=len(search_results),
+        )
+
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Search failed",
         )

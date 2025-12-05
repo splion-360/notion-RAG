@@ -149,3 +149,21 @@ class PageChunkOperations:
             .execute()
         )
         return result.data if result.data else []
+
+    @staticmethod
+    def search_similar_chunks(
+        query_embedding: list[float],
+        user_id: str,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+
+        result = supabase.rpc(
+            "search_chunks",
+            {
+                "query_embedding": query_embedding,
+                "match_count": limit,
+                "filter_user_id": user_id,
+            },
+        ).execute()
+
+        return result.data if result.data else []
