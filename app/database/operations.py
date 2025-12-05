@@ -108,3 +108,44 @@ class NotionPageOperations:
             .execute()
         )
         return result.data if result.data else []
+
+
+class PageChunkOperations:
+    @staticmethod
+    def upsert_page_chunk(
+        page_id: str,
+        chunk_index: int,
+        content: str,
+        embedding: list[float],
+    ) -> dict[str, Any] | None:
+        data = {
+            "page_id": page_id,
+            "chunk_index": chunk_index,
+            "content": content,
+            "embedding": embedding,
+        }
+
+        result = supabase.table("page_chunks").upsert(data).execute()
+
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def delete_page_chunks(page_id: str) -> bool:
+        try:
+            supabase.table("page_chunks").delete().eq("page_id", page_id).execute()
+            logger.info(f"Deleted chunks for page {page_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete chunks for page {page_id}: {e}")
+            return False
+
+    @staticmethod
+    def get_page_chunks(page_id: str) -> list[dict[str, Any]]:
+        result = (
+            supabase.table("page_chunks")
+            .select("*")
+            .eq("page_id", page_id)
+            .order("chunk_index")
+            .execute()
+        )
+        return result.data if result.data else []

@@ -32,6 +32,13 @@ else:
     SUPABASE_URL = os.environ.get("SUPABASE_URL")
     SUPABASE_KEY = os.environ.get("SUPABASE_SECRET_KEY")
 
+# Embedding models
+EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
+EMBEDDING_DIMS = 768
+
+CHUNK_SIZE = 512
+CHUNK_OVERLAP = 128
+
 
 LOG_COLORS = {
     "RED": "\033[31m",
